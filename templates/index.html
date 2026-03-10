@@ -1,0 +1,342 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Tic-Tac-Toe</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: #1a1a2e;
+      color: #eee;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .container {
+      text-align: center;
+      padding: 2rem;
+      max-width: 480px;
+      width: 100%;
+    }
+
+    h1 {
+      font-size: 2.4rem;
+      margin-bottom: 0.3rem;
+      background: linear-gradient(135deg, #e94560, #0f3460);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    /* ── Setup screen ── */
+    #setup {
+      background: #16213e;
+      border-radius: 16px;
+      padding: 2rem;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+    }
+
+    #setup h2 { margin-bottom: 1.5rem; font-size: 1.2rem; color: #aaa; }
+
+    .player-input {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      margin-bottom: 1rem;
+    }
+
+    .symbol-badge {
+      width: 42px;
+      height: 42px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.3rem;
+      font-weight: bold;
+      flex-shrink: 0;
+    }
+
+    .symbol-badge.x { background: #e94560; }
+    .symbol-badge.o { background: #0f3460; border: 2px solid #e94560; }
+
+    input[type="text"] {
+      flex: 1;
+      padding: 0.6rem 1rem;
+      border-radius: 8px;
+      border: 1px solid #0f3460;
+      background: #0f3460;
+      color: #eee;
+      font-size: 1rem;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+
+    input[type="text"]:focus { border-color: #e94560; }
+
+    .btn {
+      display: inline-block;
+      padding: 0.75rem 2.5rem;
+      border: none;
+      border-radius: 30px;
+      font-size: 1rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: transform 0.15s, opacity 0.15s;
+    }
+
+    .btn:hover { transform: translateY(-2px); opacity: 0.9; }
+    .btn:active { transform: translateY(0); }
+
+    .btn-primary { background: linear-gradient(135deg, #e94560, #c23152); color: #fff; margin-top: 1rem; }
+    .btn-secondary { background: #0f3460; color: #eee; }
+
+    /* ── Game screen ── */
+    #game { display: none; }
+
+    /* Score board */
+    .scoreboard {
+      display: flex;
+      justify-content: space-around;
+      align-items: center;
+      background: #16213e;
+      border-radius: 16px;
+      padding: 1rem 0.5rem;
+      margin-bottom: 1.5rem;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.3);
+    }
+
+    .score-card { flex: 1; }
+    .score-name { font-size: 0.85rem; color: #aaa; margin-bottom: 0.2rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .score-value { font-size: 2rem; font-weight: bold; }
+    .score-card.x .score-value { color: #e94560; }
+    .score-card.o .score-value { color: #5ba4ff; }
+    .score-divider { font-size: 0.75rem; color: #555; padding: 0 0.5rem; }
+    .score-draws .score-value { color: #aaa; }
+    .score-draws .score-name { color: #777; }
+
+    /* Status */
+    #status {
+      font-size: 1.1rem;
+      margin-bottom: 1.2rem;
+      min-height: 1.6rem;
+      color: #ccc;
+    }
+
+    #status .highlight { color: #e94560; font-weight: 700; }
+
+    /* Board */
+    #board {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+      margin: 0 auto 1.5rem;
+      max-width: 320px;
+    }
+
+    .cell {
+      aspect-ratio: 1;
+      background: #16213e;
+      border-radius: 12px;
+      font-size: 3rem;
+      font-weight: bold;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: background 0.15s, transform 0.1s;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+      user-select: none;
+    }
+
+    .cell:hover:not(.taken) { background: #1e2d5a; transform: scale(1.05); }
+    .cell.taken { cursor: default; }
+    .cell.x-mark { color: #e94560; }
+    .cell.o-mark { color: #5ba4ff; }
+    .cell.winning { background: #1e2d5a; animation: pulse 0.6s ease-in-out 2; }
+
+    @keyframes pulse {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(1.1); }
+    }
+
+    .cell.board-disabled { pointer-events: none; }
+
+    .actions { display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap; }
+  </style>
+</head>
+<body>
+<div class="container">
+  <h1>Tic-Tac-Toe</h1>
+
+  <!-- Setup -->
+  <div id="setup">
+    <h2>Enter player names to begin</h2>
+    <div class="player-input">
+      <div class="symbol-badge x">X</div>
+      <input type="text" id="nameX" placeholder="Player X name" maxlength="20" />
+    </div>
+    <div class="player-input">
+      <div class="symbol-badge o">O</div>
+      <input type="text" id="nameO" placeholder="Player O name" maxlength="20" />
+    </div>
+    <button class="btn btn-primary" onclick="startGame()">Start Game</button>
+  </div>
+
+  <!-- Game -->
+  <div id="game">
+    <div class="scoreboard">
+      <div class="score-card x">
+        <div class="score-name" id="labelX">Player X</div>
+        <div class="score-value" id="scoreX">0</div>
+      </div>
+      <div class="score-card score-draws">
+        <div class="score-name">Draws</div>
+        <div class="score-value" id="scoreD">0</div>
+      </div>
+      <div class="score-divider">|</div>
+      <div class="score-card o">
+        <div class="score-name" id="labelO">Player O</div>
+        <div class="score-value" id="scoreO">0</div>
+      </div>
+    </div>
+
+    <div id="status"></div>
+
+    <div id="board">
+      <div class="cell" data-index="0" onclick="handleClick(0)"></div>
+      <div class="cell" data-index="1" onclick="handleClick(1)"></div>
+      <div class="cell" data-index="2" onclick="handleClick(2)"></div>
+      <div class="cell" data-index="3" onclick="handleClick(3)"></div>
+      <div class="cell" data-index="4" onclick="handleClick(4)"></div>
+      <div class="cell" data-index="5" onclick="handleClick(5)"></div>
+      <div class="cell" data-index="6" onclick="handleClick(6)"></div>
+      <div class="cell" data-index="7" onclick="handleClick(7)"></div>
+      <div class="cell" data-index="8" onclick="handleClick(8)"></div>
+    </div>
+
+    <div class="actions">
+      <button class="btn btn-primary" id="nextRoundBtn" onclick="nextRound()" style="display:none">Next Round</button>
+      <button class="btn btn-secondary" onclick="resetAll()">Change Players</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  const WINS = [[0,1,2],[3,4,5],[6,7,8],[0,3,6],[1,4,7],[2,5,8],[0,4,8],[2,4,6]];
+
+  let nameX, nameO, board, current, scores, gameOver;
+
+  function startGame() {
+    nameX = document.getElementById('nameX').value.trim() || 'Player X';
+    nameO = document.getElementById('nameO').value.trim() || 'Player O';
+    scores = { X: 0, O: 0, D: 0 };
+    document.getElementById('labelX').textContent = nameX;
+    document.getElementById('labelO').textContent = nameO;
+    document.getElementById('setup').style.display = 'none';
+    document.getElementById('game').style.display = 'block';
+    updateScoreboard();
+    initRound();
+  }
+
+  function initRound() {
+    board = Array(9).fill(null);
+    current = 'X';
+    gameOver = false;
+    document.getElementById('nextRoundBtn').style.display = 'none';
+    renderBoard();
+    setStatus(`<span class="highlight">${currentName()}</span>'s turn (${current})`);
+  }
+
+  function currentName() {
+    return current === 'X' ? nameX : nameO;
+  }
+
+  function handleClick(i) {
+    if (gameOver || board[i]) return;
+    board[i] = current;
+    renderBoard();
+
+    const win = checkWin();
+    if (win) {
+      scores[current]++;
+      updateScoreboard();
+      highlight(win);
+      setStatus(`<span class="highlight">${currentName()}</span> wins this round!`);
+      endRound();
+    } else if (board.every(Boolean)) {
+      scores.D++;
+      updateScoreboard();
+      setStatus("It's a draw!");
+      endRound();
+    } else {
+      current = current === 'X' ? 'O' : 'X';
+      setStatus(`<span class="highlight">${currentName()}</span>'s turn (${current})`);
+    }
+  }
+
+  function checkWin() {
+    for (const combo of WINS) {
+      if (combo.every(i => board[i] === current)) return combo;
+    }
+    return null;
+  }
+
+  function highlight(combo) {
+    combo.forEach(i => {
+      document.querySelectorAll('.cell')[i].classList.add('winning');
+    });
+  }
+
+  function endRound() {
+    gameOver = true;
+    document.querySelectorAll('.cell').forEach(c => c.classList.add('board-disabled'));
+    document.getElementById('nextRoundBtn').style.display = 'inline-block';
+  }
+
+  function nextRound() {
+    initRound();
+  }
+
+  function renderBoard() {
+    const cells = document.querySelectorAll('.cell');
+    cells.forEach((cell, i) => {
+      const val = board[i];
+      cell.textContent = val || '';
+      cell.className = 'cell';
+      if (val === 'X') cell.classList.add('x-mark', 'taken');
+      if (val === 'O') cell.classList.add('o-mark', 'taken');
+    });
+  }
+
+  function updateScoreboard() {
+    document.getElementById('scoreX').textContent = scores.X;
+    document.getElementById('scoreO').textContent = scores.O;
+    document.getElementById('scoreD').textContent = scores.D;
+  }
+
+  function setStatus(html) {
+    document.getElementById('status').innerHTML = html;
+  }
+
+  function resetAll() {
+    document.getElementById('game').style.display = 'none';
+    document.getElementById('setup').style.display = 'block';
+  }
+
+  // Allow Enter key on name inputs
+  document.addEventListener('DOMContentLoaded', () => {
+    ['nameX', 'nameO'].forEach(id => {
+      document.getElementById(id).addEventListener('keydown', e => {
+        if (e.key === 'Enter') startGame();
+      });
+    });
+  });
+</script>
+</body>
+</html>
